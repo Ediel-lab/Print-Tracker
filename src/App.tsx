@@ -1,4 +1,5 @@
-import { useState, useEffect, type FormEvent } from 'react'; // Correção aqui: "type FormEvent"
+import { useState, useEffect } from 'react';
+import type { FormEvent, ReactNode } from 'react'; // Correção: Importação explícita de tipos
 import './App.css';
 
 // --- Tipagem ---
@@ -27,7 +28,7 @@ interface Pedido {
   cor: string;
 }
 
-// Interfaces para as Props (evita erros de "implicitly has an 'any' type")
+// Interfaces para Props
 interface ScreenAdminProps {
   pedidos: Pedido[];
   onAdd: (pedido: Pedido) => void;
@@ -41,6 +42,13 @@ interface CardAdminProps {
   onUpdate: (pedido: Pedido) => void;
   onDelete: (id: number) => void;
   onChangeStatus: (id: number, direcao: 'next' | 'prev') => void;
+}
+
+interface ColumnProps {
+  title: string;
+  count: number;
+  color: string;
+  children: ReactNode;
 }
 
 const SENHA_MESTRA = "skarlate13";
@@ -195,8 +203,6 @@ function CardCliente({ pedido }: { pedido: Pedido }) {
     { id: 'entregue', label: 'Fim', icon: 'ph-check-fat' }
   ];
   const currentIdx = STATUS_ORDER.indexOf(pedido.status);
-
-  // Lógica segura para cor
   const corCard = pedido.cor || '#3b82f6';
 
   return (
@@ -335,8 +341,8 @@ function ScreenAdmin({ pedidos, onAdd, onUpdate, onDelete, onChangeStatus }: Scr
   );
 }
 
-// Componente auxiliar simples para a coluna
-function Column({ title, count, color, children }: { title: string, count: number, color: string, children: React.ReactNode }) {
+// Componente auxiliar
+function Column({ title, count, color, children }: ColumnProps) {
   return (
     <div className="column">
       <div className={`column-header ${color}`}>
