@@ -1,12 +1,12 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react'; // Correção aqui: "type FormEvent"
 import './App.css';
 
 // --- Tipagem ---
 type StatusType = 'preparando' | 'imprimindo' | 'revisando' | 'embalando' | 'entregue';
 
-// Cores disponíveis para a "silhueta" do card
+// Cores disponíveis
 const CORES_DISPONIVEIS = [
-  '#3b82f6', // Azul (Padrão)
+  '#3b82f6', // Azul
   '#ef4444', // Vermelho
   '#f59e0b', // Laranja
   '#10b981', // Verde
@@ -24,7 +24,23 @@ interface Pedido {
   peca: string;
   status: StatusType;
   data: string;
-  cor: string; // Nova propriedade para a cor do card
+  cor: string;
+}
+
+// Interfaces para as Props (evita erros de "implicitly has an 'any' type")
+interface ScreenAdminProps {
+  pedidos: Pedido[];
+  onAdd: (pedido: Pedido) => void;
+  onUpdate: (pedido: Pedido) => void;
+  onDelete: (id: number) => void;
+  onChangeStatus: (id: number, direcao: 'next' | 'prev') => void;
+}
+
+interface CardAdminProps {
+  pedido: Pedido;
+  onUpdate: (pedido: Pedido) => void;
+  onDelete: (id: number) => void;
+  onChangeStatus: (id: number, direcao: 'next' | 'prev') => void;
 }
 
 const SENHA_MESTRA = "skarlate13";
@@ -37,18 +53,15 @@ function App() {
   const [pedidosDoCliente, setPedidosDoCliente] = useState<Pedido[]>([]);
   const [erroLogin, setErroLogin] = useState('');
 
-  // Carregar dados
   useEffect(() => {
-    const dadosSalvos = localStorage.getItem('print_tracker_v3'); // Mudei a chave para v3 para evitar conflito
+    const dadosSalvos = localStorage.getItem('print_tracker_v3');
     if (dadosSalvos) setPedidos(JSON.parse(dadosSalvos));
   }, []);
 
-  // Salvar dados
   useEffect(() => {
     localStorage.setItem('print_tracker_v3', JSON.stringify(pedidos));
   }, [pedidos]);
 
-  // --- Lógica de Acesso ---
   const handleEntrar = (e: FormEvent) => {
     e.preventDefault();
     setErroLogin('');
@@ -78,7 +91,6 @@ function App() {
     setInputCodigo('');
   };
 
-  // --- CRUD ---
   const adicionarPedido = (pedido: Pedido) => setPedidos(prev => [pedido, ...prev]);
   
   const atualizarPedido = (pedidoAtualizado: Pedido) => {
@@ -184,8 +196,11 @@ function CardCliente({ pedido }: { pedido: Pedido }) {
   ];
   const currentIdx = STATUS_ORDER.indexOf(pedido.status);
 
+  // Lógica segura para cor
+  const corCard = pedido.cor || '#3b82f6';
+
   return (
-    <div className="tracker-card" style={{ borderLeft: `5px solid ${pedido.cor || '#3b82f6'}` }}>
+    <div className="tracker-card" style={{ borderLeft: `5px solid ${corCard}` }}>
       <div className="tracker-top">
         <span className="data-pedido">{pedido.data}</span>
         <h3 className="peca-destaque">{pedido.peca}</h3>
@@ -193,27 +208,35 @@ function CardCliente({ pedido }: { pedido: Pedido }) {
       <div className="timeline">
         {steps.map((step, idx) => (
           <div key={step.id} className={`step ${idx <= currentIdx ? 'active' : ''}`}>
-            <div className="step-icon" style={idx <= currentIdx ? { borderColor: pedido.cor || '#3b82f6', background: idx === currentIdx ? (pedido.cor || '#3b82f6') : 'transparent' } : {}}>
+            <div 
+              className="step-icon" 
+              style={idx <= currentIdx ? { borderColor: corCard, background: idx === currentIdx ? corCard : 'transparent' } : {}}
+            >
               <i className={`ph-fill ${step.icon}`}></i>
             </div>
             <span className="step-label">{step.label}</span>
-            {idx < steps.length - 1 && <div className="step-line" style={idx < currentIdx ? { background: pedido.cor || '#3b82f6' } : {}}></div>}
+            {idx < steps.length - 1 && (
+              <div 
+                className="step-line" 
+                style={idx < currentIdx ? { background: corCard } : {}}
+              ></div>
+            )}
           </div>
         ))}
       </div>
       <div className="status-text-current">
-        Status: <strong style={{ color: pedido.cor || 'white' }}>{pedido.status.toUpperCase()}</strong>
+        Status: <strong style={{ color: corCard }}>{pedido.status.toUpperCase()}</strong>
       </div>
     </div>
   );
 }
 
 // --- ADMIN VIEW ---
-function ScreenAdmin({ pedidos, onAdd, onUpdate, onDelete, onChangeStatus }: any) {
+function ScreenAdmin({ pedidos, onAdd, onUpdate, onDelete, onChangeStatus }: ScreenAdminProps) {
   const [novoCliente, setNovoCliente] = useState('');
   const [novaPeca, setNovaPeca] = useState('');
   const [codigoCustom, setCodigoCustom] = useState(''); 
-  const [corSelecionada, setCorSelecionada] = useState(CORES_DISPONIVEIS[0]); // Estado da cor
+  const [corSelecionada, setCorSelecionada] = useState(CORES_DISPONIVEIS[0]);
 
   useEffect(() => { gerarNovoCodigo(); }, []);
 
@@ -273,7 +296,6 @@ function ScreenAdmin({ pedidos, onAdd, onUpdate, onDelete, onChangeStatus }: any
             <input className="input-dark" value={novaPeca} onChange={e => setNovaPeca(e.target.value)} placeholder="Descrição..." />
           </div>
           
-          {/* Seletor de Cores */}
           <div className="input-group">
             <label>Cor da Tag</label>
             <div className="color-picker">
@@ -294,30 +316,39 @@ function ScreenAdmin({ pedidos, onAdd, onUpdate, onDelete, onChangeStatus }: any
 
       <div className="board">
         <Column title="Fila / Prep" count={getCol('fila').length} color="fila">
-          {getCol('fila').map((p: Pedido) => <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />)}
+          {getCol('fila').map((p: Pedido) => (
+            <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />
+          ))}
         </Column>
         <Column title="Produção" count={getCol('prod').length} color="processo">
-          {getCol('prod').map((p: Pedido) => <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />)}
+          {getCol('prod').map((p: Pedido) => (
+            <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />
+          ))}
         </Column>
         <Column title="Finalização" count={getCol('fim').length} color="concluido">
-          {getCol('fim').map((p: Pedido) => <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />)}
+          {getCol('fim').map((p: Pedido) => (
+            <CardAdmin key={p.id} pedido={p} onUpdate={onUpdate} onDelete={onDelete} onChangeStatus={onChangeStatus} />
+          ))}
         </Column>
       </div>
     </div>
   );
 }
 
-const Column = ({ title, count, color, children }: any) => (
-  <div className="column">
-    <div className={`column-header ${color}`}>
-      <h2>{title}</h2>
-      <span className="count-badge">{count}</span>
+// Componente auxiliar simples para a coluna
+function Column({ title, count, color, children }: { title: string, count: number, color: string, children: React.ReactNode }) {
+  return (
+    <div className="column">
+      <div className={`column-header ${color}`}>
+        <h2>{title}</h2>
+        <span className="count-badge">{count}</span>
+      </div>
+      <div className="card-list">{children}</div>
     </div>
-    <div className="card-list">{children}</div>
-  </div>
-);
+  );
+}
 
-function CardAdmin({ pedido, onUpdate, onDelete, onChangeStatus }: any) {
+function CardAdmin({ pedido, onUpdate, onDelete, onChangeStatus }: CardAdminProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editPeca, setEditPeca] = useState(pedido.peca);
   const [editCliente, setEditCliente] = useState(pedido.cliente);
@@ -329,12 +360,12 @@ function CardAdmin({ pedido, onUpdate, onDelete, onChangeStatus }: any) {
 
   const copiarCodigo = () => {
     navigator.clipboard.writeText(pedido.codigo);
-    // Feedback visual sutil seria ideal, mas alert serve por enquanto
   };
 
-  // Aplica a cor escolhida como borda lateral ("silhueta")
+  const corCard = pedido.cor || '#3b82f6';
+
   return (
-    <div className={`card ${isEditing ? 'editing' : ''}`} style={{ borderLeft: `4px solid ${pedido.cor || '#3b82f6'}` }}>
+    <div className={`card ${isEditing ? 'editing' : ''}`} style={{ borderLeft: `4px solid ${corCard}` }}>
       <div className="card-top">
         <span className="hex-badge" onClick={copiarCodigo} title="Copiar">
           <i className="ph-bold ph-copy"></i> {pedido.codigo}
