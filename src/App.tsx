@@ -1,5 +1,5 @@
-// A CORREÇÃO ESTÁ AQUI NA LINHA 1: "type FormEvent" e "type ReactNode"
-import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
+import type { FormEvent, ReactNode } from 'react'; /* <--- SEPARADO EM OUTRA LINHA */
 import './App.css';
 
 // --- Tipagem ---
